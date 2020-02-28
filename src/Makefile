@@ -24,7 +24,7 @@ endif
 LINKER_SCRIPT=STM32F446ZETx_FLASH.ld
 SDKLIB=-lmbm
 
-SDK_LOCATION=../..
+SDK_LOCATION=..
 BFLAGS=-mcpu=cortex-m4 -mthumb -mlittle-endian -mfloat-abi=hard -mfpu=fpv4-sp-d16 -O1 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -ffreestanding -Wall -Wextra  -g -DROBOT_$(ROBOT)
 CFLAGS=-DNDEBUG -DARM_MATH_CM4 -std=gnu++11 -fabi-version=0 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -fno-threadsafe-statics -I$(SDK_LOCATION)/inc -I$(SDK_LOCATION)/thirdparty/nanopb 
 LDFLAGS=-T $(SDK_LOCATION)/lib/$(LINKER_SCRIPT) -nostartfiles -Xlinker --gc-sections -L$(SDK_LOCATION)/lib  --specs=nano.specs -u _printf_float -Wl,-whole-archive $(SDKLIB) -Wl,-no-whole-archive

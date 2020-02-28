@@ -62,15 +62,8 @@ import struct
 import ethernet
 
 # Import our ROS interfacing library
-import ros_interface
+from ros_interface import RosInterface
 
-# Our commands
-linear_x = 0.14
-angular_z = 0
-behaviorId = 0
-behaviorMode = 0
-height = 0
-lateral = 0
 
 # Main
 if __name__ == "__main__":
@@ -94,7 +87,7 @@ It will print received data to terminal, and if ROS is found, also publish to RO
     stx = ethernet.openTXSocket(args.iface)
 
     # Create ROS publishers and subscribers if ROS is present
-    ros_interface.initROS()
+    ros_interface = RosInterface()
 
     # Loop
     print("Starting ethernet RX and TX.")
@@ -102,9 +95,9 @@ It will print received data to terminal, and if ROS is found, also publish to RO
         time.sleep(0.001) # 1ms
 
         # If ROS, get commands, otherwise, just walk forwards and backwards
-        if ros_interface.bROS:
-            # linear_x, angular_z, behaviorId, behaviorMode, height, lateral = ros_interface.getCommands()
-            m_cmd, l_cmd = ros_interface.getCommands()
+        # if ros_interface.bROS:
+        # linear_x, angular_z, behaviorId, behaviorMode, height, lateral = ros_interface.getCommands()
+        m_cmd, l_cmd = ros_interface.getCommands()
 
         # Cap values
         # linear_x = max(min(linear_x, 1), -1)

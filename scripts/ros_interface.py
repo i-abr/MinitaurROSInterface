@@ -42,16 +42,10 @@ try:
     from std_msgs.msg import UInt32
     from nav_msgs.msg import Odometry
     from geometry_msgs.msg import Twist, Pose
-    from utils import mapFromTo, minitaurFKForURDF
+    from utils import mapFromTo, minitaurFKForURDF, convert_to_leg_model
     bROS = True
 except:
     print('No ROS found; continuing.')
-
-def toContinue():
-    if bROS:
-        return not rospy.is_shutdown()
-    else:
-        return True
 
 
 class RosInterface(object):
@@ -86,20 +80,20 @@ class RosInterface(object):
 
             # Create publishers and subscribers
             self.pubs = [
-                rospy.Publisher(robotname + '/state/imu', Imu, queue_size=10),
-                rospy.Publisher(robotname + '/state/batteryState', BatteryState, queue_size=10),
-                rospy.Publisher(robotname + '/state/behaviorId', UInt32, queue_size=10),
-                rospy.Publisher(robotname + '/state/behaviorMode', UInt32, queue_size=10),
-                rospy.Publisher(robotname + '/state/joint', JointState, queue_size=10),
-                rospy.Publisher(robotname + '/state/jointURDF', JointState, queue_size=10),
-                rospy.Publisher(robotname + '/state/joystick', Joy, queue_size=10),
-                rospy.Publisher(robotname + '/state/pose', Pose, queue_size=10),
+                rospy.Publisher(self.robotname + '/state/imu', Imu, queue_size=10),
+                rospy.Publisher(self.robotname + '/state/batteryState', BatteryState, queue_size=10),
+                rospy.Publisher(self.robotname + '/state/behaviorId', UInt32, queue_size=10),
+                rospy.Publisher(self.robotname + '/state/behaviorMode', UInt32, queue_size=10),
+                rospy.Publisher(self.robotname + '/state/joint', JointState, queue_size=10),
+                rospy.Publisher(self.robotname + '/state/jointURDF', JointState, queue_size=10),
+                rospy.Publisher(self.robotname + '/state/joystick', Joy, queue_size=10),
+                rospy.Publisher(self.robotname + '/state/pose', Pose, queue_size=10),
             ]
             # going to comment these out for now since we are not using this variation just yet
             self.subs = [
                 # rospy.Subscriber(robotname + '/command/cmd_vel', Twist, self.cmd_vel_callback),
-                rospy.Subscriber(robotname + '/command/joy', Joy, self.joy_callback),
-                # rospy.Subscriber('/joy', Joy, joy_callback),
+                # rospy.Subscriber(robotname + '/command/joy', Joy, self.joy_callback),
+                rospy.Subscriber('/joy', Joy, self.joy_callback),
                 # rospy.Subscriber(robotname + '/command/behaviorId', UInt32, self.behaviorId_callback),
                 # rospy.Subscriber(robotname + '/command/behaviorMode', UInt32, self.behaviorMode_callback),
             ]
@@ -108,14 +102,14 @@ class RosInterface(object):
             rospy.init_node('ethernet_robot_control')
 
     def getCommands(self):
-        return self.m_cmd, self.l_cmd
+        return self.rot_cmd, self.ext_cmd
 
     def joy_callback(self, data):
         lateral = mapFromTo(data.axes[3], -1.0, 1.0, -0.1, 0.1)
         linear_x = mapFromTo(data.axes[1], -1.0, 1.0, 0.12, 0.18)
-        for i in range(len(l_cmd)):
-            l_cmd[i] = linear_x
-            m_cmd[i] = lateral
+        for i in range(len(self.ext_cmd)):
+            self.ext_cmd[i] = linear_x
+            self.rot_cmd[i] = lateral
 
     # TODO: implement the following
     def cmd_vel_callback(self, data):
@@ -210,24 +204,25 @@ class RosInterface(object):
                 msg.velocity.append(state['joint/velocity'][j])
                 msg.effort.append(state['joint/effort'][j])
             self.pubs[4].publish(msg)
-
+            msg.position = convert_to_leg_model(msg.position)
             # Translate for URDF in NGR
-            vision60 = False
-            if(vision60):
-                for i in range(8, 2):
-                    msg.position[i] += msg.position[i-1];
-                    msg.velocity[i] += msg.velocity[i-1];
-            else:
-                # other URDF
-                # for URDF of Minitaur FIXME use the class I put in ethernet.py for RobotType
-                msg.position.extend([0, 0, 0, 0, 0, 0, 0, 0])
-                msg.position[11], msg.position[10], r = minitaurFKForURDF(msg.position[0], msg.position[1])
-                msg.position[14], msg.position[15], r = minitaurFKForURDF(msg.position[2], msg.position[3])
-                msg.position[9], msg.position[8], r = minitaurFKForURDF(msg.position[4], msg.position[5])
-                msg.position[13], msg.position[12], r = minitaurFKForURDF(msg.position[6], msg.position[7])
-                # other URDF problems (order important)
-                for j in range(4):
-                    msg.position[j] = -msg.position[j]
+            # vision60 = False
+            # if(vision60):
+            #     for i in range(8, 2):
+            #         msg.position[i] += msg.position[i-1];
+            #         msg.velocity[i] += msg.velocity[i-1];
+            # else:
+            #     # other URDF
+            #     # for URDF of Minitaur FIXME use the class I put in ethernet.py for RobotType
+            #     msg.position.extend([0, 0, 0, 0, 0, 0, 0, 0])
+            #     msg.position[11], msg.position[10], r = minitaurFKForURDF(msg.position[0], msg.position[1])
+            #     msg.position[14], msg.position[15], r = minitaurFKForURDF(msg.position[2], msg.position[3])
+            #     msg.position[9], msg.position[8], r = minitaurFKForURDF(msg.position[4], msg.position[5])
+            #     msg.position[13], msg.position[12], r = minitaurFKForURDF(msg.position[6], msg.position[7])
+            #     # other URDF problems (order important)
+            #     for j in range(4):
+            #         msg.position[j] = -msg.position[j]
+
             self.pubs[5].publish(msg)
 
         # Construct /robotname/state/joystick
@@ -237,6 +232,11 @@ class RosInterface(object):
         self.pubs[6].publish(msg)
 
         # Current robot twist received back from robot
-        # TODO: 
+        # TODO:
         #state['twist/linear']
         #state['twist/angular']
+    def toContinue(self):
+        if bROS:
+            return not rospy.is_shutdown()
+        else:
+            return True
