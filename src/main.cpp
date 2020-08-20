@@ -86,6 +86,7 @@ public:
 
                             // Set leg angle gain and positon
                             limb[i].setGain(ANGLE, 0.8, 0.03);
+                            // limb[i].setGain(ANGLE, 1.0, 0.03);
                             limb[i].setPosition(ANGLE, joint_cmd.m[i]);
 
                             // Set leg extension gain and position

@@ -80,19 +80,20 @@ class RosInterface(object):
 
             # Create publishers and subscribers
             self.pubs = [
-                rospy.Publisher(self.robotname + '/state/imu', Imu, queue_size=10),
-                rospy.Publisher(self.robotname + '/state/batteryState', BatteryState, queue_size=10),
-                rospy.Publisher(self.robotname + '/state/behaviorId', UInt32, queue_size=10),
-                rospy.Publisher(self.robotname + '/state/behaviorMode', UInt32, queue_size=10),
-                rospy.Publisher(self.robotname + '/state/joint', JointState, queue_size=10),
-                rospy.Publisher(self.robotname + '/state/jointURDF', JointState, queue_size=10),
-                rospy.Publisher(self.robotname + '/state/joystick', Joy, queue_size=10),
-                rospy.Publisher(self.robotname + '/state/pose', Pose, queue_size=10),
+                rospy.Publisher(self.robotname + '/state/imu', Imu, queue_size=1),
+                rospy.Publisher(self.robotname + '/state/batteryState', BatteryState, queue_size=1),
+                rospy.Publisher(self.robotname + '/state/behaviorId', UInt32, queue_size=1),
+                rospy.Publisher(self.robotname + '/state/behaviorMode', UInt32, queue_size=1),
+                rospy.Publisher(self.robotname + '/state/joint', JointState, queue_size=1),
+                rospy.Publisher(self.robotname + '/state/jointURDF', JointState, queue_size=1),
+                rospy.Publisher(self.robotname + '/state/joystick', Joy, queue_size=1),
+                rospy.Publisher(self.robotname + '/state/pose', Pose, queue_size=1),
             ]
             # going to comment these out for now since we are not using this variation just yet
             self.subs = [
                 # rospy.Subscriber(robotname + '/command/cmd_vel', Twist, self.cmd_vel_callback),
                 # rospy.Subscriber(robotname + '/command/joy', Joy, self.joy_callback),
+                rospy.Subscriber(self.robotname + '/joint_cmd', JointState, self.joint_command_callback),
                 rospy.Subscriber('/joy', Joy, self.joy_callback),
                 # rospy.Subscriber(robotname + '/command/behaviorId', UInt32, self.behaviorId_callback),
                 # rospy.Subscriber(robotname + '/command/behaviorMode', UInt32, self.behaviorMode_callback),
@@ -104,8 +105,15 @@ class RosInterface(object):
     def getCommands(self):
         return self.rot_cmd, self.ext_cmd
 
+    def joint_command_callback(self, data):
+        swing = data.position[:4]
+        extension = data.position[4:]
+        for i in range(4):
+            self.ext_cmd[i] = extension[i]
+            self.rot_cmd[i] = swing[i]
+
     def joy_callback(self, data):
-        lateral = mapFromTo(data.axes[3], -1.0, 1.0, -0.1, 0.1)
+        lateral = mapFromTo(data.axes[3], -1.0, 1.0, -0.5, 0.5)
         linear_x = mapFromTo(data.axes[1], -1.0, 1.0, 0.12, 0.18)
         for i in range(len(self.ext_cmd)):
             self.ext_cmd[i] = linear_x
@@ -205,6 +213,7 @@ class RosInterface(object):
                 msg.effort.append(state['joint/effort'][j])
             self.pubs[4].publish(msg)
             msg.position = convert_to_leg_model(msg.position)
+
             # Translate for URDF in NGR
             # vision60 = False
             # if(vision60):
